@@ -215,7 +215,8 @@ async function handleMonthSelect(e) {
 
 function processFetchedData(fetchedWeeks, selectedMonthNum) {
     try {
-        let monthMap = {};
+        let monthOrder = []; // JSON에 나온 순서대로 월 이름 보존
+        let monthSeen = {};
         let weeksInfo = [];
 
         fetchedWeeks.forEach(fw => {
@@ -234,7 +235,11 @@ function processFetchedData(fetchedWeeks, selectedMonthNum) {
                         const v = parseFloat(row[key]);
                         if (!isNaN(v)) {
                             teamData[tn][translatedLabel] = v;
-                            monthMap[translatedLabel] = true;
+                            // 처음 등장한 순서대로만 추가
+                            if (!monthSeen[translatedLabel]) {
+                                monthSeen[translatedLabel] = true;
+                                monthOrder.push(translatedLabel);
+                            }
                         }
                     }
                 });
@@ -242,12 +247,8 @@ function processFetchedData(fetchedWeeks, selectedMonthNum) {
             weeksInfo.push({ label: fw.label, teamData: teamData });
         });
 
-        // D-0, D-30 순으로 정렬하기 (숫자 오름차순)
-        var months = Object.keys(monthMap).sort((a, b) => {
-            let numA = parseInt(a.replace('D-', '')) || 0;
-            let numB = parseInt(b.replace('D-', '')) || 0;
-            return numA - numB;
-        });
+        // JSON에 나온 순서 그대로 사용 (첫 번째 row 기준)
+        var months = monthOrder;
 
         if (months.length === 0) throw new Error('월(Month) 헤더를 찾을 수 없습니다.');
 
@@ -491,13 +492,11 @@ function translateMonth(str, selectedMonthNum) {
         }
     }
 
-    if (targetMonthNum !== null && selectedMonthNum) {
-        let diff = targetMonthNum - selectedMonthNum;
-        if (diff < 0) diff += 12; // 내년으로 넘어가는 경우
-        // 기존 D-(diff*30) 에서 D-((diff+1)*30)으로 변경 (같은 달이면 D-30부터 시작하도록 요청됨)
-        return 'D-' + ((diff + 1) * 30);
+    if (targetMonthNum !== null) {
+        // 한국어 월 이름으로 반환 (예: 7월, 8월, ...)
+        return targetMonthNum + '월';
     }
 
-    // 매칭 안될 경우 원본 반환 (이미 D-xx 형태일 수도 있음)
+    // 매칭 안될 경우 원본 반환
     return str;
 }
